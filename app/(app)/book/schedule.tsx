@@ -63,13 +63,10 @@ export default function ScheduleScreen() {
       const { data, error: serviceError } = await supabase
         .from('provider_services')
         .select(`
-          id,
-          name,
-          provider_id,
-          duration_minutes,
-          provider_profile:provider_profiles(business_name)
+          *,
+          provider_profile:provider_profiles!inner(business_name)
         `)
-        .eq('id', serviceId)
+        .eq('id', serviceId.toString())
         .single();
 
       if (serviceError) throw serviceError;
@@ -90,73 +87,27 @@ export default function ScheduleScreen() {
       setLoading(true);
       setError(null);
 
-      // Get provider's availability for the selected day
-      const dayOfWeek = selectedDate.getDay();
-      const { data: availabilityData, error: availabilityError } = await supabase
-        .from('service_availability')
-        .select('start_time, end_time')
-        .eq('provider_id', service.provider_id)
-        .eq('day_of_week', dayOfWeek);
+      const { data, error } = await supabase
+        .rpc('get_available_slots', {
+          p_provider_id: service.provider_id,
+          p_date: selectedDate.toISOString().slice(0, 10),
+          p_duration_minutes: service.duration_minutes
+        });
 
-      if (availabilityError) throw availabilityError;
+      if (error) throw error;
 
-      // Get existing bookings for the selected date
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('start_time, end_time')
-        .eq('provider_id', service.provider_id)
-        .eq('scheduled_date', selectedDate.toISOString().split('T')[0])
-        .not('status', 'in', ['cancelled', 'declined']);
+      if (!data || data.length === 0) {
+        setAvailableSlots([]);
+        return;
+      }
 
-      if (bookingsError) throw bookingsError;
-
-      // Generate available time slots
-      const slots: AvailableSlot[] = [];
-      const serviceDuration = service.duration_minutes;
-
-      availabilityData?.forEach((availability: TimeSlot) => {
-        const [startHour, startMinute] = availability.start_time.split(':');
-        const [endHour, endMinute] = availability.end_time.split(':');
-        
-        let slotStart = new Date(selectedDate);
-        slotStart.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
-
-        const availabilityEnd = new Date(selectedDate);
-        availabilityEnd.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
-
-        while (slotStart < availabilityEnd) {
-          const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-          
-          // Check if slot conflicts with any existing booking
-          const hasConflict = bookingsData?.some((booking: TimeSlot) => {
-            const bookingStart = new Date(selectedDate);
-            const [bStartHour, bStartMinute] = booking.start_time.split(':');
-            bookingStart.setHours(parseInt(bStartHour), parseInt(bStartMinute), 0, 0);
-
-            const bookingEnd = new Date(selectedDate);
-            const [bEndHour, bEndMinute] = booking.end_time.split(':');
-            bookingEnd.setHours(parseInt(bEndHour), parseInt(bEndMinute), 0, 0);
-
-            return (
-              (slotStart >= bookingStart && slotStart < bookingEnd) ||
-              (slotEnd > bookingStart && slotEnd <= bookingEnd) ||
-              (slotStart <= bookingStart && slotEnd >= bookingEnd)
-            );
-          });
-
-          if (!hasConflict && slotEnd <= availabilityEnd) {
-            slots.push({
-              date: selectedDate.toISOString().split('T')[0],
-              start_time: slotStart.toTimeString().slice(0, 5),
-              end_time: slotEnd.toTimeString().slice(0, 5),
-            });
-          }
-
-          slotStart = new Date(slotStart.getTime() + 30 * 60000); // 30-minute intervals
-        }
-      });
-
-      setAvailableSlots(slots);
+      setAvailableSlots(
+        (data || []).map(slot => ({
+          date: selectedDate.toISOString().slice(0, 10),
+          start_time: slot.start_time,
+          end_time: slot.end_time
+        }))
+      );
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -214,15 +165,17 @@ export default function ScheduleScreen() {
   const handleContinue = () => {
     if (!selectedSlot) return;
     
-    router.push({
-      pathname: '/book/address',
-      params: {
-        serviceId,
-        date: selectedSlot.date,
-        startTime: selectedSlot.start_time,
-        endTime: selectedSlot.end_time,
-      },
-    });
+    if (service?.id) {
+      router.push({
+        pathname: '/book/address',
+        params: {
+          serviceId: service.id,
+          date: selectedSlot.date,
+          startTime: selectedSlot.start_time,
+          endTime: selectedSlot.end_time,
+        },
+      });
+    }
   };
 
   if (loading && !service) {

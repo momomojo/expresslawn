@@ -37,15 +37,10 @@ export default function EditServiceScreen() {
   const loadService = async () => {
     try {
       const { data, error } = await supabase
-        .from('services')
+        .from('provider_services')
         .select(`
           *,
-          provider_service:provider_services(
-            id,
-            price_override,
-            custom_description,
-            is_active
-          )
+          image:service_images!inner(url)
         `)
         .eq('id', id)
         .single();
@@ -54,10 +49,10 @@ export default function EditServiceScreen() {
       if (!data) throw new Error('Service not found');
 
       setService(data);
-      setCustomPrice(data.provider_service?.price_override?.toString() || data.base_price.toString());
-      setCustomDescription(data.provider_service?.custom_description || data.description);
-      setCustomDuration(data.provider_service?.duration_override?.toString() || data.duration_minutes.toString());
-      setIsActive(data.provider_service?.is_active ?? false);
+      setCustomPrice(data.price.toString());
+      setCustomDescription(data.description);
+      setCustomDuration(data.duration_minutes.toString());
+      setIsActive(data.is_active);
     } catch (err: any) {
       setError(err.message);
     }
@@ -71,8 +66,8 @@ export default function EditServiceScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const priceOverride = parseFloat(customPrice);
-      if (isNaN(priceOverride) || priceOverride < 0) {
+      const newPrice = parseFloat(customPrice);
+      if (isNaN(newPrice) || newPrice < 0) {
         throw new Error('Invalid price');
       }
 
@@ -81,41 +76,22 @@ export default function EditServiceScreen() {
         throw new Error('Invalid duration');
       }
 
-      const { data: existingService, error: queryError } = await supabase
+      const { error: updateError } = await supabase 
         .from('provider_services')
-        .select('id')
-        .eq('service_id', id)
+        .update({
+          price: newPrice,
+          description: customDescription,
+          is_active: isActive,
+          duration_minutes: durationOverride,
+        })
+        .eq('id', id)
         .eq('provider_id', user.id)
-        .single();
+        .select();
 
-      if (queryError && queryError.code !== 'PGRST116') throw queryError;
+      if (updateError) throw updateError;
 
-      if (existingService) {
-        const { error: updateError } = await supabase
-          .from('provider_services')
-          .update({
-            price_override: priceOverride,
-            custom_description: customDescription,
-            is_active: isActive,
-            duration_override: durationOverride,
-          })
-          .eq('id', existingService.id);
-
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('provider_services')
-          .insert({
-            provider_id: user.id,
-            service_id: id,
-            price_override: priceOverride,
-            custom_description: customDescription,
-            duration_override: durationOverride,
-            is_active: isActive,
-          });
-
-        if (insertError) throw insertError;
-      }
+      // Reload service to show updated values
+      await loadService();
 
       router.back();
     } catch (err: any) {
@@ -177,7 +153,7 @@ export default function EditServiceScreen() {
             <View style={styles.basePrice}>
               <DollarSign size={16} color="#666" />
               <Text style={styles.basePriceText}>
-                ${service.base_price.toFixed(2)}
+                ${service.price?.toFixed(2) || '0.00'}
               </Text>
             </View>
           </View>
