@@ -113,6 +113,7 @@ export default function Index() {
       </View>
     </ImageBackground>
   );
+
 }
 
 const styles = StyleSheet.create({

@@ -1,27 +1,6 @@
-import { Stack, router } from 'expo-router';
-import { useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { Stack } from 'expo-router';
 
 export default function AuthLayout() {
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        // Check if user is a provider
-        const { data: provider } = await supabase
-          .from('provider_profiles')
-          .select('id')
-          .eq('id', session.user.id)
-          .single();
-
-        if (provider) {
-          router.replace('/(provider)/(tabs)');
-        } else {
-          router.replace('/(app)/(tabs)');
-        }
-      }
-    });
-  }, []);
-
   return (
     <Stack
       initialRouteName="login"

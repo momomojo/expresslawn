@@ -42,14 +42,18 @@ export default function Login() {
     >
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Image 
-            source={{ uri: 'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?q=80&w=180&auto=format&fit=crop' }}
-            style={styles.logoBackground}
-          />
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>L</Text>
-            <View style={styles.heart} />
-          </View>
+          <TouchableOpacity onPress={() => router.push('/')}>
+            <View>
+              <Image 
+                source={{ uri: 'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?q=80&w=180&auto=format&fit=crop' }}
+                style={styles.logoBackground}
+              />
+              <View style={styles.logo}>
+                <Text style={styles.logoText}>L</Text>
+                <View style={styles.heart} />
+              </View>
+            </View>
+          </TouchableOpacity>
           <Text style={styles.title}>Express Lawn</Text>
           <Text style={styles.subtitle}>Professional Lawn Care Services</Text>
         </View>

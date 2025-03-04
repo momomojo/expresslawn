@@ -1,5 +1,5 @@
+import { Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { 
   useFonts,
@@ -40,11 +40,17 @@ export default function RootLayout() {
   if (!loaded) {
     return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
   }
-
+  
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <Slot />
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(provider-auth)" />
+        <Stack.Screen name="(app)" />
+        <Stack.Screen name="(provider)" />
+      </Stack>
+      <StatusBar style="light" />
+    </>
   ); 
 }
