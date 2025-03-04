@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 import { MapPin } from 'lucide-react-native';
 import { supabase } from '../../../lib/supabase';
 
@@ -119,7 +120,13 @@ export default function Browse() {
                           </Text>
                         </View>
                       </View>
-                      <TouchableOpacity style={styles.orderButton}>
+                      <TouchableOpacity 
+                        style={styles.orderButton}
+                        onPress={() => router.push({
+                          pathname: '/book/[id]',
+                          params: { id: service.id }
+                        })}
+                      >
                         <Text style={styles.orderButtonText}>ORDER NOW</Text>
                       </TouchableOpacity>
                     </View>

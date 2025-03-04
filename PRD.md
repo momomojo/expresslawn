@@ -320,6 +320,9 @@ service_availability
 - Provider acceptance rate > 90%
 - Customer satisfaction > 4.5/5
 - Average response time < 2 seconds
+- Booking abandonment rate < 20%
+- First-time booking success > 85%
+- Payment success rate > 95%
 
 ## Future Enhancements
 - Recurring bookings
