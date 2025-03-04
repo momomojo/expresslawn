@@ -1,40 +1,69 @@
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MapPin } from 'lucide-react-native';
+import { supabase } from '../../../lib/supabase';
 
-const services = [
-  {
-    id: 1,
-    title: 'Lawn Treatment',
-    description: 'Strengthen grass and kill weeds for a greener lawn.',
-    image: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?q=80&w=800&auto=format&fit=crop',
-  },
-  {
-    id: 2,
-    title: 'Lawn Mowing',
-    description: 'Cut and maintain grass for a neat, healthy lawn.',
-    image: 'https://images.unsplash.com/photo-1624943113472-a3821381e040?q=80&w=800&auto=format&fit=crop',
-  },
-  {
-    id: 3,
-    title: 'Tree Care',
-    description: 'Trim trees to keep them healthy, safe, and neat.',
-    image: 'https://images.unsplash.com/photo-1598902468171-0f50e32a7bf8?q=80&w=800&auto=format&fit=crop',
-  },
-  {
-    id: 4,
-    title: 'Mulching',
-    description: 'Retain water and prevent weeds with mulching and sheeting.',
-    image: 'https://images.unsplash.com/photo-1647531452166-3493b4c6d6b9?q=80&w=800&auto=format&fit=crop',
-  },
-  {
-    id: 5,
-    title: 'Landscaping',
-    description: 'Transform your outdoor space with professional landscaping.',
-    image: 'https://images.unsplash.com/photo-1595429035839-c99c298ffdde?q=80&w=800&auto=format&fit=crop',
-  },
-];
+type Service = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  duration_minutes: number;
+  category: string;
+  provider_id: string;
+  provider_profile: {
+    business_name: string;
+  };
+  image: {
+    url: string;
+  };
+};
 
 export default function Browse() {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadServices();
+  }, []);
+
+  const loadServices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error: servicesError } = await supabase
+        .from('provider_services')
+        .select(`
+          *,
+          provider_profile:provider_profiles(business_name),
+          image:service_images(url)
+        `)
+        .eq('is_active', true)
+        .order('category');
+
+      if (servicesError) throw servicesError;
+      setServices(data || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const groupedServices = services.reduce((acc, service) => {
+    const category = service.category.split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(service);
+    return acc;
+  }, {} as Record<string, Service[]>);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -46,27 +75,60 @@ export default function Browse() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionTitle}>Services to explore</Text>
-        
-        <View style={styles.servicesList}>
-          {services.map((service) => (
-            <View key={service.id} style={styles.serviceCard}>
-              <Image
-                source={{ uri: service.image }}
-                style={styles.serviceImage}
-              />
-              <View style={styles.serviceContent}>
-                <View>
-                  <Text style={styles.serviceTitle}>{service.title}</Text>
-                  <Text style={styles.serviceDescription}>{service.description}</Text>
-                </View>
-                <TouchableOpacity style={styles.orderButton}>
-                  <Text style={styles.orderButtonText}>ORDER NOW</Text>
-                </TouchableOpacity>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2B5F21" />
+            <Text style={styles.loadingText}>Loading services...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={loadServices}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          Object.entries(groupedServices).map(([category, categoryServices]) => (
+            <View key={category} style={styles.categorySection}>
+              <Text style={styles.sectionTitle}>{category}</Text>
+              <View style={styles.servicesList}>
+                {categoryServices.map((service) => (
+                  <View key={service.id} style={styles.serviceCard}>
+                    <Image
+                      source={{ uri: service.image?.url }}
+                      style={styles.serviceImage}
+                    />
+                    <View style={styles.serviceContent}>
+                      <View>
+                        <Text style={styles.serviceTitle}>{service.name}</Text>
+                        <Text style={styles.providerName}>
+                          by {service.provider_profile.business_name}
+                        </Text>
+                        <Text style={styles.serviceDescription}>
+                          {service.description}
+                        </Text>
+                        <View style={styles.serviceDetails}>
+                          <Text style={styles.servicePrice}>
+                            ${service.price.toFixed(2)}
+                          </Text>
+                          <Text style={styles.serviceDuration}>
+                            {service.duration_minutes} min
+                          </Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity style={styles.orderButton}>
+                        <Text style={styles.orderButtonText}>ORDER NOW</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
               </View>
             </View>
-          ))}
-        </View>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -103,6 +165,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+    paddingBottom: 32,
+  },
+  categorySection: {
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 20,
@@ -111,7 +177,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   servicesList: {
-    gap: 16,
     gap: 12,
   },
   serviceCard: {
@@ -130,6 +195,12 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 16,
   },
+  providerName: {
+    fontSize: 14,
+    fontFamily: 'Inter',
+    color: '#2B5F21',
+    marginBottom: 4,
+  },
   serviceTitle: {
     fontSize: 18,
     fontFamily: 'InterSemiBold',
@@ -142,6 +213,22 @@ const styles = StyleSheet.create({
     color: '#666',
     color: '#555',
     lineHeight: 20,
+  },
+  serviceDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 8,
+  },
+  servicePrice: {
+    fontSize: 16,
+    fontFamily: 'InterSemiBold',
+    color: '#2B5F21',
+  },
+  serviceDuration: {
+    fontSize: 14,
+    fontFamily: 'Inter',
+    color: '#666',
   },
   orderButton: {
     backgroundColor: '#fff',
@@ -156,5 +243,33 @@ const styles = StyleSheet.create({
     color: '#2B5F21',
     fontSize: 14,
     fontFamily: 'InterSemiBold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontFamily: 'Inter',
+    color: '#666',
+  },
+  errorContainer: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter',
+    color: '#FF4B4B',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#2B5F21',
+    padding: 12,
+    borderRadius: 8,
   },
 });
