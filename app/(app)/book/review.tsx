@@ -34,23 +34,18 @@ export default function ReviewScreen() {
   const loadUserProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace('/login');
-        return;
-      }
+      if (!user) throw new Error('Not authenticated');
 
       // Get profile safely
-      const { data, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .rpc('get_profile_safely', { user_id: user.id });
 
       if (profileError) throw profileError;
-      if (!data) {
-        throw new Error('Failed to load profile');
-      }
 
-      setProfile(data);
+      setProfile(profile);
     } catch (err: any) {
       setError('Error loading profile: ' + err.message);
+      router.replace('/login');
     }
   };
 
