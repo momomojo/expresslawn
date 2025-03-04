@@ -35,6 +35,7 @@ export default function ScheduleScreen() {
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<{ address: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Calendar state
@@ -43,7 +44,31 @@ export default function ScheduleScreen() {
 
   useEffect(() => {
     loadService();
-  }, [serviceId]);
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace('/login');
+        return;
+      }
+
+      // Get profile safely
+      const { data: profile, error: profileError } = await supabase
+        .rpc('get_profile_safely', { user_id: user.id });
+
+      if (profileError) throw profileError;
+      if (!data) {
+        throw new Error('Failed to load profile');
+      }
+
+      setProfile(data);
+    } catch (err: any) {
+      setError('Error loading profile: ' + err.message);
+    }
+  };
 
   useEffect(() => {
     if (service) {
@@ -173,7 +198,8 @@ export default function ScheduleScreen() {
           date: selectedSlot.date,
           startTime: selectedSlot.start_time,
           endTime: selectedSlot.end_time,
-        },
+          address: profile?.address || ''
+        }
       });
     }
   };

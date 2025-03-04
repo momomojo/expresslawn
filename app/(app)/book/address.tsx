@@ -18,13 +18,35 @@ type Service = {
 export default function AddressScreen() {
   const { serviceId, date, startTime, endTime } = useLocalSearchParams();
   const [service, setService] = useState<Service | null>(null);
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadService();
+    loadUserProfile();
   }, [serviceId]);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace('/login');
+        return;
+      }
+
+      // Get profile safely
+      const { data: profile, error: profileError } = await supabase
+        .rpc('get_profile_safely', { user_id: user.id });
+
+      if (profileError) throw profileError;
+      if (!data) throw new Error('Failed to load profile');
+
+      setAddress(profile.address || '');
+    } catch (err: any) {
+      setError('Error loading profile: ' + err.message);
+    }
+  };
 
   const loadService = async () => {
     try {
@@ -81,15 +103,21 @@ export default function AddressScreen() {
     const saveAddress = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase
+        const { data: existingProfile } = await supabase
           .from('profiles')
-          .upsert({
-            id: user.id,
-            address: address.trim()
-          });
+          .select('id')
+          .eq('id', user.id);
+
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ address: address.trim() })
+          .eq('id', user.id);
+        
+        if (updateError) {
+          console.error('Error saving address:', updateError);
+        }
       }
-    };
-    saveAddress();
+    }
 
     router.push({
       pathname: '/book/review',

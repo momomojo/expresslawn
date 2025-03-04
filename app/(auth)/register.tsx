@@ -30,24 +30,30 @@ export default function Register() {
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
+        options: {
+          data: {
+            first_name: form.firstName,
+            last_name: form.lastName
+          }
+        }
       });
 
       if (signUpError) throw signUpError;
 
       if (authData.user) {
-        // Create profile
-        const { error: profileError } = await supabase
+        // Wait a moment for the trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Update the profile with additional information
+        const { error: updateError } = await supabase
           .from('profiles')
-          .insert({
-            id: authData.user.id,
-            first_name: form.firstName,
-            last_name: form.lastName,
+          .update({
             phone: form.phone,
-            address: form.address,
-            role: 'customer',
-          });
+            address: form.address
+          })
+          .eq('id', authData.user.id);
 
-        if (profileError) throw profileError;
+        if (updateError) throw updateError;
 
         router.replace('/(app)/(tabs)');
       }

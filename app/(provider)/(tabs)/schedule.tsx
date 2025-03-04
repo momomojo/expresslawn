@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
-import { ArrowLeft, ArrowRight, Clock, MapPin } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Clock, MapPin, User } from 'lucide-react-native';
 
 type ScheduleItem = {
   start_time: string;
@@ -12,6 +12,11 @@ type ScheduleItem = {
   subtitle: string;
   status?: string;
   color: string;
+  customer?: {
+    first_name: string;
+    last_name: string;
+    address: string;
+  };
   booking_id?: string;
 };
 
@@ -40,7 +45,8 @@ export default function Schedule() {
         'get_provider_schedule',
         {
           p_provider_id: user.id,
-          p_date: selectedDate.toISOString().split('T')[0]
+          p_date: selectedDate.toISOString().split('T')[0],
+          p_include_bookings: true
         }
       );
 
@@ -150,14 +156,26 @@ export default function Schedule() {
                     <View style={styles.itemDetails}>
                       <View style={styles.itemDetail}>
                         <Clock size={16} color="#666" />
-                        <Text style={styles.itemDetailText}>{item.subtitle}</Text>
+                        <Text style={styles.itemDetailText}>
+                          {item.subtitle}
+                        </Text>
                       </View>
 
-                      {item.type === 'booking' && (
+                      {item.type === 'booking' && item.customer && (
+                        <>
+                        <View style={styles.itemDetail}>
+                          <User size={16} color="#666" />
+                          <Text style={styles.itemDetailText}>
+                            {item.customer.first_name} {item.customer.last_name}
+                          </Text>
+                        </View>
                         <View style={styles.itemDetail}>
                           <MapPin size={16} color="#666" />
-                          <Text style={styles.itemDetailText}>123 Main St</Text>
+                          <Text style={styles.itemDetailText}>
+                            {item.customer.address}
+                          </Text>
                         </View>
+                        </>
                       )}
                     </View>
                   </View>
@@ -250,7 +268,7 @@ const styles = StyleSheet.create({
   itemCard: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#EAEAEA',
   },
@@ -276,6 +294,17 @@ const styles = StyleSheet.create({
   },
   itemDetails: {
     gap: 8,
+  },
+  itemDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  itemDetailText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Inter',
+    color: '#666',
   },
   itemDetail: {
     flexDirection: 'row',

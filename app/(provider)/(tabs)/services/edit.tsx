@@ -37,10 +37,11 @@ export default function EditServiceScreen() {
   const loadService = async () => {
     try {
       const { data, error } = await supabase
-        .from('provider_services')
+        .from('provider_services') 
         .select(`
           *,
-          image:service_images!inner(url)
+          provider_profile:provider_profiles(business_name),
+          image:service_images(url)
         `)
         .eq('id', id)
         .single();
@@ -51,7 +52,7 @@ export default function EditServiceScreen() {
       setService(data);
       setCustomPrice(data.price.toString());
       setCustomDescription(data.description);
-      setCustomDuration(data.duration_minutes.toString());
+      setCustomDuration(data.duration_minutes?.toString() || '60');
       setIsActive(data.is_active);
     } catch (err: any) {
       setError(err.message);
@@ -79,10 +80,10 @@ export default function EditServiceScreen() {
       const { error: updateError } = await supabase 
         .from('provider_services')
         .update({
-          price: newPrice,
+          price: parseFloat(newPrice),
           description: customDescription,
           is_active: isActive,
-          duration_minutes: durationOverride,
+          duration_minutes: parseInt(durationOverride)
         })
         .eq('id', id)
         .eq('provider_id', user.id)
