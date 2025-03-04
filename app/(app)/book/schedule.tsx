@@ -45,7 +45,7 @@ export default function ScheduleScreen() {
   useEffect(() => {
     loadService();
     loadUserProfile();
-  }, []);
+  }, [serviceId]);
 
   const loadUserProfile = async () => {
     try {
@@ -57,6 +57,10 @@ export default function ScheduleScreen() {
         .rpc('get_profile_safely', { user_id: user.id });
 
       if (profileError) throw profileError;
+      if (!profile) {
+        router.replace('/login');
+        return;
+      }
       setProfile(profile);
     } catch (err: any) {
       setError('Error loading profile: ' + err.message);

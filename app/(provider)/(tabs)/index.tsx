@@ -11,6 +11,7 @@ type Job = {
   start_time: string;
   service_address: string;
   total_price: number;
+  notes?: string;
   service: {
     name: string;
   };
@@ -31,6 +32,7 @@ export default function ProviderDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [completingJob, setCompletingJob] = useState<string | null>(null);
 
   useEffect(() => {
     loadJobs();
@@ -79,7 +81,7 @@ export default function ProviderDashboard() {
         `)
         .eq('provider_id', user.id)
         .gte('scheduled_date', today)
-        .in('status', ['pending', 'confirmed'])
+        .in('status', ['pending', 'confirmed', 'in_progress'])
         .order('scheduled_date', { ascending: true })
         .order('start_time', { ascending: true });
 
@@ -127,6 +129,45 @@ export default function ProviderDashboard() {
       setError(err.message);
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const handleCompleteJob = async (jobId: string) => {
+    try {
+      setCompletingJob(jobId);
+      setError(null);
+
+      // Update booking status to completed
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+
+      if (updateError) throw updateError;
+
+      // Create invoice record
+      const job = jobs.find(j => j.id === jobId);
+      if (job) {
+        const { error: invoiceError } = await supabase
+          .from('invoices')
+          .insert({
+            booking_id: jobId,
+            amount: job.total_price,
+            status: 'pending',
+            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+          });
+
+        if (invoiceError) throw invoiceError;
+      }
+
+      await loadJobs();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCompletingJob(null);
     }
   };
 
@@ -197,11 +238,15 @@ export default function ProviderDashboard() {
                     <Text style={styles.jobService}>{job.service.name}</Text>
                     <View style={[
                       styles.statusBadge,
-                      job.status === 'confirmed' ? styles.statusConfirmed : styles.statusPending
+                      job.status === 'confirmed' ? styles.statusConfirmed : 
+                      job.status === 'in_progress' ? styles.statusInProgress :
+                      styles.statusPending
                     ]}>
                       <Text style={[
                         styles.statusText,
-                        job.status === 'confirmed' ? styles.statusConfirmedText : styles.statusPendingText
+                        job.status === 'confirmed' ? styles.statusConfirmedText :
+                        job.status === 'in_progress' ? styles.statusInProgressText :
+                        styles.statusPendingText
                       ]}>
                         {job.status.toUpperCase()}
                       </Text>
@@ -228,18 +273,24 @@ export default function ProviderDashboard() {
                   <TouchableOpacity 
                     style={[
                       styles.jobButton,
-                      job.status === 'confirmed' ? styles.startButton : styles.acceptButton,
-                      updating === job.id && styles.jobButtonDisabled
+                      job.status === 'in_progress' ? styles.completeButton :
+                      job.status === 'confirmed' ? styles.startButton : 
+                      styles.acceptButton,
+                      (updating === job.id || completingJob === job.id) && styles.jobButtonDisabled
                     ]}
                     onPress={() => job.status === 'confirmed' 
                       ? handleStartJob(job.id)
+                      : job.status === 'in_progress'
+                      ? handleCompleteJob(job.id)
                       : handleAcceptJob(job.id)
                     }
-                    disabled={updating === job.id}
+                    disabled={updating === job.id || completingJob === job.id}
                   >
                     <Text style={styles.jobButtonText}>
-                      {updating === job.id
+                      {(updating === job.id || completingJob === job.id)
                         ? 'UPDATING...'
+                        : job.status === 'in_progress'
+                        ? 'COMPLETE JOB'
                         : job.status === 'confirmed'
                         ? 'START JOB'
                         : 'ACCEPT JOB'
@@ -340,6 +391,9 @@ const styles = StyleSheet.create({
   statusConfirmed: {
     backgroundColor: '#E5FFE9',
   },
+  statusInProgress: {
+    backgroundColor: '#E5F5FF',
+  },
   statusText: {
     fontSize: 12,
     fontFamily: 'InterSemiBold',
@@ -349,6 +403,9 @@ const styles = StyleSheet.create({
   },
   statusConfirmedText: {
     color: '#2B5F21',
+  },
+  statusInProgressText: {
+    color: '#2196F3',
   },
   jobDetails: {
     gap: 8,
@@ -374,6 +431,9 @@ const styles = StyleSheet.create({
   },
   startButton: {
     backgroundColor: '#FF9800',
+  },
+  completeButton: {
+    backgroundColor: '#4CAF50',
   },
   jobButtonText: {
     color: '#fff',
