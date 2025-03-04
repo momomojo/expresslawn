@@ -165,7 +165,7 @@ export default function Register() {
               </Text>
             </TouchableOpacity>
 
-            <Link href="/login" asChild>
+            <Link href="/(auth)/login" asChild>
               <TouchableOpacity style={styles.loginLink}>
                 <Text style={styles.loginText}>
                   Already have an account? <Text style={styles.loginHighlight}>Sign In</Text>

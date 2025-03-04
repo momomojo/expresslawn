@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Platform, ImageBackground } from 'react-native';
 import { Link, router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { ArrowRight } from 'lucide-react-native';
+import { ArrowRight, Building2 } from 'lucide-react-native';
 
 const heroImage = 'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?q=80&w=1920&auto=format&fit=crop';
 
@@ -70,18 +70,45 @@ export default function Index() {
           <Text style={styles.subtitle}>Professional lawn care services at your fingertips</Text>
         </View>
 
-        <View style={styles.buttonContainer}>
-          <Link href="/register" asChild>
-            <TouchableOpacity style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Get Started</Text>
-              <ArrowRight size={20} color="#2B5F21" />
-            </TouchableOpacity>
-          </Link>
-          <Link href="/login" asChild>
-            <TouchableOpacity style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Sign In</Text>
-            </TouchableOpacity>
-          </Link>
+        <View style={styles.sections}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>For Customers</Text>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={styles.primaryButton}
+                onPress={() => router.push('/(auth)/register')}
+              >
+                <Text style={styles.primaryButtonText}>Get Started</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.secondaryButton}
+                onPress={() => router.push('/(auth)/login')}
+              >
+                <Text style={styles.secondaryButtonText}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>For Service Providers</Text>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={styles.providerButton}
+                onPress={() => router.push('/(auth)/provider-register')}
+              >
+                <Building2 size={20} color="#2B5F21" />
+                <Text style={styles.providerButtonText}>Register as Provider</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.secondaryButton, styles.providerSecondaryButton]}
+                onPress={() => router.push('/(provider-auth)/login')}
+              >
+                <Text style={[styles.secondaryButtonText, styles.providerSecondaryText]}>Provider Login</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </View>
     </ImageBackground>
@@ -92,9 +119,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  backgroundImage: {
-    opacity: 0.8,
-  },
+  backgroundImage: StyleSheet.flatten({
+    opacity: 0.8
+  }),
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(43, 95, 33, 0.85)',
@@ -146,22 +173,54 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     textAlign: 'center',
     paddingHorizontal: 20,
+    marginBottom: 40,
+  },
+  sections: {
+    gap: 32,
+    marginBottom: Platform.OS === 'web' ? 80 : 40,
+  },
+  section: {
+    gap: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontFamily: 'InterSemiBold',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginHorizontal: 40,
   },
   buttonContainer: {
     gap: 12,
-    marginBottom: Platform.OS === 'web' ? 80 : 40,
   },
   primaryButton: {
     backgroundColor: '#fff',
     paddingVertical: Platform.OS === 'web' ? 16 : 14,
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center'
+  },
+  primaryButtonText: {
+    color: '#2B5F21',
+    fontSize: Platform.OS === 'web' ? 18 : 16,
+    fontFamily: 'InterSemiBold',
+  },
+  providerButton: {
+    backgroundColor: '#fff',
+    paddingVertical: Platform.OS === 'web' ? 16 : 14,
+    paddingHorizontal: 32,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    borderWidth: 1,
+    borderColor: '#2B5F21',
   },
-  primaryButtonText: {
+  providerButtonText: {
     color: '#2B5F21',
     fontSize: Platform.OS === 'web' ? 18 : 16,
     fontFamily: 'InterSemiBold',
@@ -190,5 +249,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter',
     textAlign: 'center',
+  },
+  providerSecondaryButton: {
+    borderColor: '#2B5F21',
+    backgroundColor: 'rgba(43, 95, 33, 0.1)',
+  },
+  providerSecondaryText: {
+    color: '#2B5F21',
   },
 });

@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Link, router } from 'expo-router';
-import { Lock, Mail } from 'lucide-react-native';
+import { Lock, Mail, ArrowLeft } from 'lucide-react-native';
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
-export default function Login() {
+export default function ProviderLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,14 +20,27 @@ export default function Login() {
       setLoading(true);
       setError('');
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: { session }, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) throw signInError;
 
-      router.replace('/(app)/(tabs)');
+      if (session) {
+        const { data: provider } = await supabase
+          .from('provider_profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!provider) {
+          await supabase.auth.signOut();
+          throw new Error('Invalid provider account');
+        }
+
+        router.replace('/(provider)/(tabs)');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
     } finally {
@@ -41,6 +54,13 @@ export default function Login() {
       style={styles.container}
     >
       <View style={styles.content}>
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <ArrowLeft size={24} color="#2B5F21" />
+        </TouchableOpacity>
+
         <View style={styles.logoContainer}>
           <Image 
             source={{ uri: 'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?q=80&w=180&auto=format&fit=crop' }}
@@ -50,8 +70,8 @@ export default function Login() {
             <Text style={styles.logoText}>L</Text>
             <View style={styles.heart} />
           </View>
-          <Text style={styles.title}>Express Lawn</Text>
-          <Text style={styles.subtitle}>Professional Lawn Care Services</Text>
+          <Text style={styles.title}>Provider Login</Text>
+          <Text style={styles.subtitle}>Access your business dashboard</Text>
         </View>
 
         <View style={styles.form}>
@@ -60,7 +80,7 @@ export default function Login() {
           <View style={styles.inputContainer}>
             <Mail size={20} color="#666" style={styles.inputIcon} />
             <TextInput
-              placeholder="Email"
+              placeholder="Business Email"
               style={styles.input}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -90,10 +110,10 @@ export default function Login() {
             </Text>
           </TouchableOpacity>
 
-          <Link href="/(auth)/register" asChild>
+          <Link href="/(auth)/provider-register" asChild>
             <TouchableOpacity style={styles.registerLink}>
               <Text style={styles.registerText}>
-                Don't have an account? <Text style={styles.registerHighlight}>Sign Up</Text>
+                Don't have a provider account? <Text style={styles.registerHighlight}>Register</Text>
               </Text>
             </TouchableOpacity>
           </Link>
@@ -112,6 +132,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     justifyContent: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    zIndex: 10,
   },
   logoContainer: {
     alignItems: 'center',
