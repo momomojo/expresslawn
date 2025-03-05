@@ -9,12 +9,19 @@ type Booking = {
   scheduled_date: string;
   start_time: string;
   end_time: string;
+  completed_at: string | null;
   service_address: string;
+  total_price: number;
   service: {
     name: string;
     provider_profile: {
       business_name: string;
     };
+  };
+  invoice?: {
+    id: string;
+    status: string;
+    due_date: string;
   };
 };
 
@@ -56,23 +63,9 @@ export default function CustomerSchedule() {
       if (!user) throw new Error('Not authenticated');
 
       const { data, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          status,
-          scheduled_date,
-          start_time,
-          end_time,
-          service_address,
-          service:provider_services(
-            name,
-            provider_profile:provider_profiles(business_name)
-          )
-        `)
-        .eq('customer_id', user.id)
-        .not('status', 'in', '(cancelled,declined)')
-        .order('scheduled_date', { ascending: true })
-        .order('start_time', { ascending: true });
+        .rpc('get_customer_bookings', {
+          p_customer_id: user.id
+        });
 
       if (bookingsError) throw bookingsError;
       setBookings(data || []);
@@ -190,6 +183,19 @@ export default function CustomerSchedule() {
                       {booking.service_address}
                     </Text>
                   </View>
+                  {booking.status === 'completed' && booking.invoice && (
+                    <View style={[
+                      styles.invoiceBadge,
+                      { backgroundColor: getStatusColor(booking.invoice.status) + '20' }
+                    ]}>
+                      <Text style={[
+                        styles.invoiceText,
+                        { color: getStatusColor(booking.invoice.status) }
+                      ]}>
+                        {booking.invoice.status === 'pending' ? 'PAYMENT DUE' : 'PAID'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             ))}
@@ -246,6 +252,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusText: {
+    fontSize: 12,
+    fontFamily: 'InterSemiBold',
+  },
+  invoiceBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  invoiceText: {
     fontSize: 12,
     fontFamily: 'InterSemiBold',
   },

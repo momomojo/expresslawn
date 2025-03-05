@@ -48,9 +48,15 @@ export default function ProviderRegister() {
       setLoading(true);
       setError('');
 
+      // Sign up with provider role in metadata
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
+        options: {
+          data: {
+            role: 'provider'
+          }
+        }
       });
 
       if (signUpError) throw signUpError;

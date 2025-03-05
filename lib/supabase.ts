@@ -2,20 +2,27 @@ import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { Database } from './database.types';
 
 // Web storage adapter
 const webStorageAdapter = {
   getItem: (key: string) => {
-    const value = localStorage.getItem(key);
-    return Promise.resolve(value);
+    return new Promise((resolve) => {
+      const value = localStorage.getItem(key);
+      resolve(value);
+    });
   },
   setItem: (key: string, value: string) => {
-    localStorage.setItem(key, value);
-    return Promise.resolve();
+    return new Promise((resolve) => {
+      localStorage.setItem(key, value);
+      resolve();
+    });
   },
   removeItem: (key: string) => {
-    localStorage.removeItem(key);
-    return Promise.resolve();
+    return new Promise((resolve) => {
+      localStorage.removeItem(key);
+      resolve();
+    });
   },
 };
 
@@ -35,11 +42,27 @@ const nativeStorageAdapter = {
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+// Configure client with retries
+
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: Platform.OS === 'web' ? webStorageAdapter : nativeStorageAdapter,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    flowType: 'pkce',
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'expo-router',
+    },
+    retryConfig: {
+      count: 3,
+      delay: 200,
+    },
   },
 });

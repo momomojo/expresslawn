@@ -419,6 +419,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter',
     color: '#1B1B1B',
     flex: 1,
+    paddingVertical: 4,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -431,13 +432,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   textArea: {
-    height: 100,
+    height: 120,
     padding: 12,
+    paddingTop: 12,
     textAlignVertical: 'top',
     backgroundColor: '#F9F9F9',
     borderWidth: 1,
     borderColor: '#E5E5E5',
-    borderRadius: 8,
+    borderRadius: 12,
+    fontSize: 16,
+    fontFamily: 'Inter',
+    color: '#1B1B1B',
   },
   pickerContainer: {
     borderWidth: 1,
